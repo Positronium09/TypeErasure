@@ -9,6 +9,12 @@ export namespace TypeErasure
 	template <FeatureType... Features>
 	struct FeatureComposer
 	{
+		template <typename T>
+		struct Validator
+		{
+			static constexpr auto value = ValidateType<T, Features...>;
+		};
+
 		template <typename V>
 		using VTable = VtableComposer<V, Features...>::Type;
 
@@ -47,8 +53,32 @@ export namespace TypeErasure
 	};
 	*/
 
-	struct OutStreamable
+	class OutStreamable
 	{
+		template <typename T>
+		struct CanStream
+		{
+			static constexpr auto value = requires (std::ostream & o, T a)
+			{
+				o << a;
+			};
+		};
+		template <typename T>
+		struct CanWStream
+		{
+			static constexpr auto value = requires (std::wostream & o, T a)
+			{
+				o << a;
+			};
+		};
+
+		public:
+		template <typename T>
+		struct Validator
+		{
+			static constexpr auto value = CanStream<T>::value || CanWStream<T>::value;
+		};
+
 		template <typename V>
 		struct VTable : virtual V
 		{
@@ -62,11 +92,25 @@ export namespace TypeErasure
 			using M::M;
 			auto StreamTo(std::ostream& os) -> void override
 			{
-				os << this->GetObject();
+				if constexpr (CanStream<typename M::ObjectType>::value)
+				{
+					os << this->GetObject();
+				}
+				else
+				{
+					throw std::bad_any_cast{ };
+				}
 			}
 			auto StreamTo(std::wostream& os) -> void override
 			{
-				os << this->GetObject();
+				if constexpr (CanWStream<typename M::ObjectType>::value)
+				{
+					os << this->GetObject();
+				}
+				else
+				{
+					throw std::bad_any_cast{ };
+				}
 			}
 		};
 
@@ -75,21 +119,21 @@ export namespace TypeErasure
 		{
 			using I::I;
 
-			auto StreamTo(std::ostream& os) -> void
+			auto StreamTo(std::ostream& os) const -> void
 			{
 				dynamic_cast<VTable<VTableBase>*>(this->GetVTable())->StreamTo(os);
 			}
-			auto StreamTo(std::wostream& os) -> void
+			auto StreamTo(std::wostream& os) const -> void
 			{
 				dynamic_cast<VTable<VTableBase>*>(this->GetVTable())->StreamTo(os);
 			}
 
-			friend auto operator<<(std::ostream& os, Interface& obj) -> std::ostream&
+			friend auto operator<<(std::ostream& os, const Interface& obj) -> std::ostream&
 			{
 				obj.StreamTo(os);
 				return os;
 			}
-			friend auto operator<<(std::wostream& os, Interface& obj) -> std::wostream&
+			friend auto operator<<(std::wostream& os, const Interface& obj) -> std::wostream&
 			{
 				obj.StreamTo(os);
 				return os;
@@ -97,8 +141,32 @@ export namespace TypeErasure
 		};
 	};
 
-	struct InStreamable
+	class InStreamable
 	{
+		template <typename T>
+		struct CanStream
+		{
+			static constexpr auto value = requires (std::istream & i, T & a)
+			{
+				i >> a;
+			};
+		};
+		template <typename T>
+		struct CanWStream
+		{
+			static constexpr auto value = requires (std::wistream & i, T & a)
+			{
+				i >> a;
+			};
+		};
+
+		public:
+		template <typename T>
+		struct Validator
+		{
+			static constexpr auto value = CanStream<T>::value || CanWStream<T>::value;
+		};
+
 		template <typename V>
 		struct VTable : virtual V
 		{
@@ -112,11 +180,25 @@ export namespace TypeErasure
 			using M::M;
 			auto StreamFrom(std::istream& is) -> void override
 			{
-				is >> this->GetObject();
+				if constexpr (CanStream<typename M::ObjectType>::value)
+				{
+					is >> this->GetObject();
+				}
+				else
+				{
+					throw std::bad_any_cast{ };
+				}
 			}
 			auto StreamFrom(std::wistream& is) -> void override
 			{
-				is >> this->GetObject();
+				if constexpr (CanWStream<typename M::ObjectType>::value)
+				{
+					is >> this->GetObject();
+				}
+				else
+				{
+					throw std::bad_any_cast{ };
+				}
 			}
 		};
 

@@ -24,6 +24,21 @@ namespace TypeErasure::Detail
 	struct HasTemplatedInterface : std::false_type { };
 	template <typename T>
 	struct HasTemplatedInterface<T, std::void_t<typename T::template Interface<DummyTemplateCheck>>> : std::true_type { };
+	template <typename, typename = void>
+	struct HasValidator : std::false_type { };
+	template <typename T>
+	struct HasValidator<T,
+	std::void_t<decltype(T::template Validator<DummyTemplateCheck>::value)>> : std::true_type { };
+
+	template <typename, typename U>
+	struct ValidateHelper : std::true_type
+	{
+	};
+	template <typename T, typename U> requires HasValidator<U>::value
+	struct ValidateHelper<T, U>
+	{
+		static constexpr bool value = U::template Validator<T>::value;
+	};
 }
 
 export namespace TypeErasure
@@ -32,10 +47,16 @@ export namespace TypeErasure
 	concept IsSpecialization = Detail::IsSpecializationHelper<T, Template>::value;
 
 	template <typename T>
+	concept Validated = Detail::HasValidator<T>::value;
+
+	template <typename T>
 	concept FeatureType =
 		Detail::HasTemplatedVTable<T>::value &&
 		Detail::HasTemplatedModel<T>::value &&
 		Detail::HasTemplatedInterface<T>::value;
+
+	template <typename T, typename... Features>
+	concept ValidateType = (Detail::ValidateHelper<T, Features>::value && ...);
 
 	struct VTableBase
 	{
@@ -73,6 +94,8 @@ export namespace TypeErasure
 	class ModelBase : public VTable
 	{
 		public:
+		using ObjectType = T;
+
 		template <typename... Args>
 		explicit ModelBase(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) :
 			object{ std::forward<Args>(args)... }
@@ -116,6 +139,8 @@ export namespace TypeErasure
 	class ModelBase<T&, VTable> : public VTable
 	{
 		public:
+		using ObjectType = T;
+
 		explicit ModelBase(T& obj) noexcept :
 			object{ obj }
 		{
@@ -123,12 +148,12 @@ export namespace TypeErasure
 
 		auto& GetObject() noexcept
 		{
-			return object;
+			return object.get();
 		}
 
 		const auto& GetObject() const noexcept
 		{
-			return object;
+			return object.get();
 		}
 
 		auto Type() const noexcept -> const std::type_info & override
@@ -153,6 +178,8 @@ export namespace TypeErasure
 	class ModelBase<const T&, VTable> : public VTable
 	{
 		public:
+		using ObjectType = T;
+
 		explicit ModelBase(const T& obj) noexcept :
 			object{ obj }
 		{
@@ -160,7 +187,7 @@ export namespace TypeErasure
 
 		const auto& GetObject() const noexcept
 		{
-			return object;
+			return object.get();
 		}
 
 		auto Type() const noexcept -> const std::type_info& override
@@ -257,7 +284,7 @@ export namespace TypeErasure
 			this->Reset();
 		}
 
-		template <typename T> requires !IsSpecialization<T, Any>
+		template <typename T> requires !IsSpecialization<T, Any> && ValidateType<T, Features...>
 		explicit Any(T&& obj) noexcept(std::is_nothrow_constructible_v<std::decay_t<T>, T>)
 		{
 			using Decayed = std::decay_t<T>;
@@ -265,100 +292,66 @@ export namespace TypeErasure
 			this->vtable = std::make_unique<Model>(std::forward<T>(obj));
 		}
 
-		template <typename T>
+		template <typename T> requires ValidateType<T, Features...>
 		explicit Any(T& obj) noexcept
 		{
 			using Model = CompleteModel<T&, Features...>;
 			this->vtable = std::make_unique<Model>(obj);
 		}
-		template <typename T>
+		template <typename T> requires ValidateType<T, Features...>
 		explicit Any(const T& obj) noexcept
 		{
 			using Model = CompleteModel<const T&, Features...>;
 			this->vtable = std::make_unique<Model>(obj);
 		}
-		template <typename T>
+		template <typename T> requires ValidateType<T, Features...>
 		explicit Any(std::reference_wrapper<T> obj) :
 			Any{ obj.get() }
 		{
 		}
 
-		template <typename T>
+		template <typename T> requires ValidateType<T, Features...>
 		auto GetObject() const -> const T&
 		{
 			using TNaked = std::remove_cvref_t<std::decay_t<T>>;
-			constexpr auto isReferenceWrapperType = IsSpecialization<T, std::reference_wrapper>;
 
+			if (IsCRef())
+			{
+				using Model = CompleteModel<std::add_lvalue_reference_t<std::add_const_t<TNaked>>, Features...>;
+				const auto* model = dynamic_cast<const Model*>(GetModelPtr());
+				return model->GetObject();
+			}
 			if (IsRef())
 			{
-				using ModelType = std::conditional_t<isReferenceWrapperType, T, std::reference_wrapper<TNaked>>;
-				using Model = CompleteModel<ModelType, Features...>;
-				const auto model = std::bit_cast<const Model*>(GetModelPtr());
-				return model->GetObject().get();
-			}
-			if (this->Type() != typeid(T))
-			{
-				throw std::bad_any_cast{ };
-			}
-			if constexpr (isReferenceWrapperType)
-			{
-				using ModelType = T::type;
-				using Model = CompleteModel<ModelType, Features...>;
-				const auto model = std::bit_cast<const Model*>(GetModelPtr());
+				using Model = CompleteModel<std::add_lvalue_reference_t<TNaked>, Features...>;
+				const auto* model = dynamic_cast<const Model*>(GetModelPtr());
 				return model->GetObject();
 			}
-			else
-			{
-				using ModelType = TNaked;
-				using Model = CompleteModel<ModelType, Features...>;
-				const auto model = std::bit_cast<const Model*>(GetModelPtr());
-				return model->GetObject();
-			}
+
+			using Model = CompleteModel<TNaked, Features...>;
+			const auto* model = dynamic_cast<const Model*>(GetModelPtr());
+			return model->GetObject();
 		}
 
-		template <typename T>
+		template <typename T> requires ValidateType<T, Features...>
 		auto GetObject() -> T&
 		{
-			using TNaked = std::remove_cvref_t<std::decay_t<T>>;
-			constexpr auto isReferenceWrapperType = IsSpecialization<T, std::reference_wrapper>;
-
-			if (IsRef())
+			if (!IsRef())
 			{
-				if (IsCRef())
-				{
-					throw std::bad_any_cast{ };
-				}
-
-				using ModelType = std::conditional_t<isReferenceWrapperType, T, std::reference_wrapper<TNaked>>;
-				using Model = CompleteModel<ModelType, Features...>;
-				const auto model = std::bit_cast<Model*>(GetModelPtr());
-				return model->GetObject().get();
+				throw std::bad_any_cast{ };
 			}
-
-			if (this->Type() != typeid(T))
+			if (IsCRef())
 			{
 				throw std::bad_any_cast{ };
 			}
 
-			if constexpr (isReferenceWrapperType)
-			{
-				using ModelType = T::type;
-				using Model = CompleteModel<ModelType, Features...>;
-
-				const auto model = std::bit_cast<Model*>(GetModelPtr());
-				return model->GetObject();
-			}
-			else
-			{
-				using ModelType = TNaked;
-				using Model = CompleteModel<ModelType, Features...>;
-
-				const auto model = std::bit_cast<Model*>(GetModelPtr());
-				return model->GetObject();
-			}
+			using TNaked = std::remove_cvref_t<std::decay_t<T>>;
+			using Model = CompleteModel<std::add_lvalue_reference_t<TNaked>, Features...>;
+			const auto* model = dynamic_cast<Model*>(GetModelPtr());
+			return model->GetObject();
 		}
 
-		template <typename T>
+		template <typename T> requires ValidateType<T, Features...>
 		auto Is() const
 		{
 			return this->Type() == typeid(T);
@@ -380,30 +373,40 @@ export namespace TypeErasure
 		}
 	};
 
-	template <FeatureType... Features, typename T>
+	template <FeatureType... Features, typename T> requires ValidateType<T, Features...>
 	auto MakeAny(T&& value) noexcept
 	{
-		return Any<Features...>(std::forward<T>(value));
+		return Any<Features...>(std::move(value));
 	}
-	template <FeatureType... Features, typename T>
+	template <FeatureType... Features, typename T> requires ValidateType<T, Features...>
 	auto MakeAnyRef(T& value) noexcept
 	{
 		return Any<Features...>(std::ref(value));
 	}
-	template <FeatureType... Features, typename T>
+	template <FeatureType... Features, typename T> requires ValidateType<T, Features...>
 	auto MakeAnyRef(const T& value) noexcept
 	{
 		return Any<Features...>(std::cref(value));
 	}
-	template <FeatureType... Features, typename T>
+	template <FeatureType... Features, typename T> requires ValidateType<T, Features...>
+	auto MakeAnyRef(T&& value) noexcept
+	{
+		return Any<Features...>(std::move(static_cast<std::remove_cvref_t<T>&&>(value)));
+	}
+	template <FeatureType... Features, typename T> requires ValidateType<T, Features...>
 	auto MakeAnyCRef(T& value) noexcept
 	{
 		return Any<Features...>(std::cref(value));
 	}
-	template <FeatureType... Features, typename T>
+	template <FeatureType... Features, typename T> requires ValidateType<T, Features...>
 	auto MakeAnyCRef(const T& value) noexcept
 	{
 		return Any<Features...>(std::cref(value));
+	}
+	template <FeatureType... Features, typename T> requires ValidateType<T, Features...>
+	auto MakeAnyCRef(T&& value) noexcept
+	{
+		return Any<Features...>(std::move(static_cast<std::remove_cvref_t<T>&&>(value)));
 	}
 
 	template <typename T, IsSpecialization<Any> AnyType>
