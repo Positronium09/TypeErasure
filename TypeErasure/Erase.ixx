@@ -274,6 +274,13 @@ export namespace TypeErasure
 		std::unique_ptr<VTableBase> vtable{ nullptr };
 	};
 
+	struct AnyTypeInformation
+	{
+		const std::type_info& type;
+		bool isRef;
+		bool isCRef;
+	};
+
 	template <FeatureType... Features>
 	struct Any : InterfaceComposer<AnyBase, Features...>::Type
 	{
@@ -364,6 +371,15 @@ export namespace TypeErasure
 		constexpr auto IsCRef() const noexcept
 		{
 			return this->vtable->IsCRef();
+		}
+
+		constexpr auto GetTypeInformation() const
+		{
+			return AnyTypeInformation{
+				.type = this->Type(),
+				.isRef = this->IsRef(),
+				.isCRef = this->IsCRef()
+			};
 		}
 
 		private:

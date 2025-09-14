@@ -4,59 +4,95 @@ import TypeErasure;
 
 using namespace TypeErasure;
 
-
-struct Test1
-{ };
-
-struct Test2
+struct Drawable
 {
 	template <typename T>
 	struct Validator
 	{
-		static constexpr auto value = false;
+		static constexpr auto value = requires(const T& a)
+		{
+			a.Draw();
+		};
 	};
-};
 
-struct Test3
-{
-	template <typename T>
-	struct Validator
+	template <typename V>
+	struct VTable : virtual V
 	{
-		static constexpr auto value = true;
+		virtual auto Draw() const -> void = 0;
+	};
+
+	template <typename M>
+	struct Model : M
+	{
+		using M::M;
+		auto Draw() const -> void override
+		{
+			this->GetObject().Draw();
+		}
+	};
+
+	template <typename I>
+	struct Interface : virtual I
+	{
+		auto Draw() const -> void
+		{
+			if (!this->HasValue())
+			{
+				throw std::bad_any_cast{ };
+			}
+			dynamic_cast<VTable<VTableBase>*>(this->GetVTable())->Draw();
+		}
 	};
 };
 
 struct Point
 {
-	int x = 0;
-	int y = 0;
-	int z = 0;
-	int w = 0;
-	int r = 0;
-	int q = 0;
-	int p = 0;
+	int x;
+	int y;
 
-	friend auto operator<<(std::ostream& os, const Point& pt) -> std::ostream&
+	Point(const int x, const int y) :
+		x{ x }, y{ y }
+	{ };
+
+	auto Draw() const -> void
 	{
-		return os << '(' << pt.x << ", " << pt.y << ')';
+		std::cout << "Point(" << x << ", " << y << ")\n";
 	}
+};
 
-	friend auto operator>>(std::istream& is, Point& pt) -> std::istream&
+struct Triangle
+{
+	Point a;
+	Point b;
+	Point c;
+
+	Triangle() :
+		a{ 0, 0 },
+		b{ 1, 0 },
+		c{ 0, 1 }
+	{ };
+
+	auto Draw() const -> void
 	{
-		char c;
-		return is >> c >> pt.x >> pt.y >> c;
+		std::cout << "Triangle(\n";
+		a.Draw();
+		b.Draw();
+		c.Draw();
+		std::cout << ")\n";
 	}
 };
 
 auto main() -> int
 {
 	auto x = 42;
-	auto any = MakeAnyRef<Streamable>(Point{ 5, 5 });
+	Triangle t;
+	const auto any = MakeAnyCRef<Drawable>(t);
+	const auto any2 = MakeAnyRef<Drawable>(Point{ 5, 5 });
+	any.Draw();
+	any2.Draw();
+	std::println("{} {} {}", any.GetTypeInformation().type.name(), any.IsRef(), any.IsCRef());
 	// const auto& y = any.GetObject<const int&>();
 	//y = 100;
-	std::cout << any << '\n';
-	std::cin >> any;
-	std::cout << any << '\n';
 	// std::cout << x << '\n';
 
 	return 0;
