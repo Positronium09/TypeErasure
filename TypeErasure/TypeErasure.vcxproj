@@ -152,7 +152,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Erase.ixx" />
-    <ClCompile Include="Features.ixx" />
+    <ClCompile Include="Features\Comparable.ixx" />
+    <ClCompile Include="Features\Features.ixx" />
+    <ClCompile Include="Features\Formattable.ixx" />
+    <ClCompile Include="Features\Streamable.ixx" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Storage.ixx" />
     <ClCompile Include="TypeErasure.ixx" />

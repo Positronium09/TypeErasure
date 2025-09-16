@@ -49,6 +49,9 @@ export namespace TypeErasure
 	template <typename T>
 	concept Validated = Detail::HasValidator<T>::value;
 
+	template <typename T, typename... Types>
+	concept InParameterPack = (std::is_same_v<T, Types> || ...);
+
 	template <typename T>
 	concept FeatureType =
 		Detail::HasTemplatedVTable<T>::value &&
@@ -242,7 +245,7 @@ export namespace TypeErasure
 
 	struct AnyBase
 	{
-		auto GetVTable() const noexcept
+		constexpr auto GetVTable() const noexcept
 		{
 			return vtable.get();
 		}
@@ -364,6 +367,12 @@ export namespace TypeErasure
 			return this->Type() == typeid(T);
 		}
 
+		template <FeatureType Feature>
+		static consteval auto HasFeature() noexcept
+		{
+			return InParameterPack<Feature, Features...>;
+		}
+
 		constexpr auto IsRef() const noexcept
 		{
 			return this->vtable->IsRef();
@@ -383,16 +392,35 @@ export namespace TypeErasure
 		}
 
 		private:
-		auto GetModelPtr() const noexcept
+		constexpr auto GetModelPtr() const noexcept
 		{
 			return this->GetVTable();
 		}
 	};
 
+	template <FeatureType... Features>
+	struct FeatureComposer
+	{
+		template <typename T>
+		struct Validator
+		{
+			static constexpr auto value = ValidateType<T, Features...>;
+		};
+
+		template <typename V>
+		using VTable = VtableComposer<V, Features...>::Type;
+
+		template <typename M>
+		using Model = ModelComposer<M, Features...>::Type;
+
+		template <typename I>
+		using Interface = InterfaceComposer<I, Features...>::Type;
+	};
+
 	template <FeatureType... Features, typename T> requires ValidateType<T, Features...>
 	auto MakeAny(T&& value) noexcept
 	{
-		return Any<Features...>(std::move(value));
+		return Any<Features...>(std::forward<T>(value));
 	}
 	template <FeatureType... Features, typename T> requires ValidateType<T, Features...>
 	auto MakeAnyRef(T& value) noexcept

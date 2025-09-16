@@ -27,7 +27,16 @@
     <ClCompile Include="Erase.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Features.ixx">
+    <ClCompile Include="Features\Features.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Features\Streamable.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Features\Formattable.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Features\Comparable.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
