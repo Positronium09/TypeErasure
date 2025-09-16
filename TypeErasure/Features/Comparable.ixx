@@ -21,7 +21,7 @@ export namespace TypeErasure::Features
 			virtual auto Equal(const VTable* other) const -> bool = 0;
 		};
 		template <typename M>
-		struct Model : virtual M
+		struct Model : M
 		{
 			using M::M;
 			auto Equal(const VTable<VTableBase>* other) const -> bool override
@@ -45,7 +45,6 @@ export namespace TypeErasure::Features
 				}
 				const auto& vTable = dynamic_cast<const VTable<VTableBase>&>(*this->GetVTable());
 				const auto& otherVTable = dynamic_cast<const VTable<VTableBase>*>(other.GetVTable());
-				return true;
 				return vTable.Equal(otherVTable);
 			}
 		};
@@ -83,9 +82,6 @@ export namespace TypeErasure::Features
 			using M::M;
 			auto CompareWith(const void* ptr, const std::type_info& type) const -> bool override
 			{
-				const auto& name = type.name();
-				auto& obj = this->GetObject();
-				auto& f = *std::bit_cast<const float*>(ptr);
 				return ((type == typeid(Types) && this->GetObject() == *std::bit_cast<const Types*>(ptr)) || ...);
 			}
 		};

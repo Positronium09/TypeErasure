@@ -59,6 +59,11 @@ struct Point
 	{
 		std::cout << "Point(" << x << ", " << y << ")\n";
 	}
+
+	auto operator==(const Point& other) const -> bool
+	{
+		return x == other.x && y == other.y;
+	}
 };
 
 struct Triangle
@@ -132,7 +137,7 @@ auto main() -> int
 	any.Draw();
 	any2.Draw();
 
-	const auto comp1 = MakeAny<EqualityComparable>(55);
+	const auto comp1 = MakeAny<EqualityComparable, EqualityComparableWith<float>>(55);
 	const auto comp2 = MakeAny<EqualityComparable>(55);
 	const auto comp3 = MakeAny<EqualityComparable>(57);
 	std::println("comp1 == comp2: {}", comp1 == comp2);
@@ -140,11 +145,7 @@ auto main() -> int
 	std::println("{}", comp1.GetObject<int>());
 	std::println("{}", comp2.GetObject<int>());
 	std::println("{}", comp3.GetObject<int>());
-	//std::println("comp1 == 55: {}", comp1 != 55.0f);
-
-	// const auto& y = any.GetObject<const int&>();
-	//y = 100;
-	// std::cout << x << '\n';
+	std::println("comp1 == 55.0F: {}", comp1 == 55.0F);
 
 	return 0;
 }
