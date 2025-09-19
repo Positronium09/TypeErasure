@@ -137,14 +137,13 @@ auto main() -> int
 	any.Draw();
 	any2.Draw();
 
-	const auto comp1 = MakeAny<EqualityComparable, EqualityComparableWith<float>>(55);
+	const auto comp1 = MakeAny<EqualityComparable, EqualityComparableWith<float>, ExplicitlyConvertibleTo<float>>(55);
+	const auto f = static_cast<float>(comp1);
 	const auto comp2 = MakeAny<EqualityComparable>(55);
 	const auto comp3 = MakeAny<EqualityComparable>(57);
 	std::println("comp1 == comp2: {}", comp1 == comp2);
 	std::println("comp1 != comp3: {}", comp1 != comp3);
 	std::println("{}", comp1.GetObject<int>());
-	std::println("{}", comp2.GetObject<int>());
-	std::println("{}", comp3.GetObject<int>());
 	std::println("comp1 == 55.0F: {}", comp1 == 55.0F);
 
 	return 0;

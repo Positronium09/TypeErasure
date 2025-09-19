@@ -69,6 +69,38 @@ export namespace TypeErasure
 
 		virtual constexpr auto IsRef() const noexcept -> bool = 0;
 		virtual constexpr auto IsCRef() const noexcept -> bool = 0;
+		virtual constexpr auto GetRawObjectPtr() const noexcept -> const void* = 0;
+		virtual constexpr auto GetRawObjectPtr() noexcept -> void* = 0;
+
+		template <typename T>
+		constexpr auto GetObjectPtr() noexcept -> T*
+		{
+			if (Type() != typeid(T) && Type() != typeid(std::remove_cv_t<T>))
+			{
+				return nullptr;
+			}
+			return static_cast<T*>(GetRawObjectPtr());
+		}
+		template <typename T>
+		constexpr auto GetObjectPtr() const noexcept -> const T*
+		{
+			if (Type() != typeid(T) && Type() != typeid(std::remove_cv_t<T>))
+			{
+				return nullptr;
+			}
+			return static_cast<const T*>(GetRawObjectPtr());
+		}
+
+		template <typename T>
+		constexpr auto GetObjectPtrCheckless() noexcept -> T*
+		{
+			return static_cast<T*>(GetRawObjectPtr());
+		}
+		template <typename T>
+		constexpr auto GetObjectPtrCheckless() const noexcept -> const T*
+		{
+			return static_cast<const T*>(GetRawObjectPtr());
+		}
 	};
 
 	template <typename Base, FeatureType... Features>
@@ -134,6 +166,15 @@ export namespace TypeErasure
 			return false;
 		}
 
+		constexpr auto GetRawObjectPtr() const noexcept -> const void* override
+		{
+			return std::addressof(object);
+		}
+		constexpr auto GetRawObjectPtr() noexcept -> void* override
+		{
+			return std::addressof(object);
+		}
+
 		private:
 		T object;
 	};
@@ -173,6 +214,15 @@ export namespace TypeErasure
 			return false;
 		}
 
+		constexpr auto GetRawObjectPtr() const noexcept -> const void* override
+		{
+			return std::addressof(object);
+		}
+		constexpr auto GetRawObjectPtr() noexcept -> void* override
+		{
+			return std::addressof(object);
+		}
+
 		private:
 		std::reference_wrapper<T> object;
 	};
@@ -205,6 +255,15 @@ export namespace TypeErasure
 		constexpr auto IsCRef() const noexcept -> bool override
 		{
 			return true;
+		}
+
+		constexpr auto GetRawObjectPtr() const noexcept -> const void* override
+		{
+			return std::addressof(object);
+		}
+		constexpr auto GetRawObjectPtr() noexcept -> void* override
+		{
+			return std::addressof(object);
 		}
 
 		private:
