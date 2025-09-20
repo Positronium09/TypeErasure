@@ -59,7 +59,11 @@ export namespace TypeErasure
 		Detail::HasTemplatedInterface<T>::value;
 
 	template <typename T, typename... Features>
-	concept ValidateType = (Detail::ValidateHelper<T, Features>::value && ...);
+	concept ValidateType = (Detail::ValidateHelper<T, Features>::value && ...) && (FeatureType<Features> && ...);
+	template <typename T, typename... Features>
+	concept SupportsFeatures = ValidateType<T, Features...>;
+	template <typename T, typename Feature>
+	concept SupportsFeature = ValidateType<T, Feature>;
 
 	struct VTableBase
 	{
@@ -421,7 +425,7 @@ export namespace TypeErasure
 		}
 
 		template <typename T> requires ValidateType<T, Features...>
-		auto Is() const
+		auto Holds() const
 		{
 			return this->Type() == typeid(T);
 		}
