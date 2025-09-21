@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+TypeErasure/main.cpp
+/TypeErasure/main.cpp
