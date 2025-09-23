@@ -12,17 +12,17 @@ namespace Details
 	template <typename T, typename U>
 	concept LessThanOrEqualCompareHelper = requires(const T & a, const U & b)
 	{
-		{ a < b } -> std::convertible_to<bool>;
+		{ a <= b } -> std::convertible_to<bool>;
 	};
 	template <typename T, typename U>
 	concept GreaterThanCompareHelper = requires(const T & a, const U & b)
 	{
-		{ a < b } -> std::convertible_to<bool>;
+		{ a > b } -> std::convertible_to<bool>;
 	};
 	template <typename T, typename U>
 	concept GreaterThanOrEqualCompareHelper = requires(const T & a, const U & b)
 	{
-		{ a < b } -> std::convertible_to<bool>;
+		{ a >= b } -> std::convertible_to<bool>;
 	};
 }
 
