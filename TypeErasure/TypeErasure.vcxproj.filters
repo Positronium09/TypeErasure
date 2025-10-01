@@ -39,5 +39,8 @@
     <ClCompile Include="Features\ConvertibleTo.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Features\Callable.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

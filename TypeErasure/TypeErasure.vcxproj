@@ -152,6 +152,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Erase.ixx" />
+    <ClCompile Include="Features\Callable.ixx" />
     <ClCompile Include="Features\Comparable.ixx" />
     <ClCompile Include="Features\ConvertibleTo.ixx" />
     <ClCompile Include="Features\Features.ixx" />
