@@ -308,7 +308,7 @@ export namespace TypeErasure
 
 	struct AnyBase
 	{
-		constexpr auto GetVTable() const noexcept
+		auto GetVTable() const noexcept
 		{
 			return vtable.get();
 		}
@@ -337,7 +337,7 @@ export namespace TypeErasure
 		}
 
 		protected:
-		std::unique_ptr<VTableBase> vtable{ nullptr };
+		std::shared_ptr<VTableBase> vtable{ nullptr };
 	};
 
 	struct AnyTypeInformation
@@ -356,26 +356,24 @@ export namespace TypeErasure
 		{
 			this->Reset();
 		}
-
 		template <typename T> requires !IsSpecialization<T, Any> && ValidateType<T, Features...>
 		explicit Any(T&& obj) noexcept(std::is_nothrow_constructible_v<std::decay_t<T>, T>)
 		{
 			using Decayed = std::decay_t<T>;
 			using Model = CompleteModel<Decayed, Features...>;
-			this->vtable = std::make_unique<Model>(std::forward<T>(obj));
+			this->vtable = std::make_shared<Model>(std::forward<T>(obj));
 		}
-
 		template <typename T> requires ValidateType<T, Features...>
 		explicit Any(T& obj) noexcept
 		{
 			using Model = CompleteModel<T&, Features...>;
-			this->vtable = std::make_unique<Model>(obj);
+			this->vtable = std::make_shared<Model>(obj);
 		}
 		template <typename T> requires ValidateType<T, Features...>
 		explicit Any(const T& obj) noexcept
 		{
 			using Model = CompleteModel<const T&, Features...>;
-			this->vtable = std::make_unique<Model>(obj);
+			this->vtable = std::make_shared<Model>(obj);
 		}
 		template <typename T> requires ValidateType<T, Features...>
 		explicit Any(std::reference_wrapper<T> obj) :
