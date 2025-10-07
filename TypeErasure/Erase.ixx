@@ -220,11 +220,11 @@ export namespace TypeErasure
 
 		constexpr auto GetRawObjectPtr() const noexcept -> const void* override
 		{
-			return std::addressof(object);
+			return std::addressof(object.get());
 		}
 		constexpr auto GetRawObjectPtr() noexcept -> void* override
 		{
-			return std::addressof(object);
+			return std::addressof(object.get());
 		}
 
 		private:
