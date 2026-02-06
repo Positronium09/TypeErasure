@@ -31,7 +31,7 @@ namespace TypeErasure::ConvertibleDetail
 				auto Convert() const -> void
 				{
 					const auto& obj = self.GetObject();
-					*std::bit_cast<T*>(ptr) = static_cast<T>(obj); //ts should be illegal gng
+					std::construct_at(static_cast<T*>(ptr), static_cast<T>(obj));
 				}
 			};
 
@@ -59,11 +59,23 @@ namespace TypeErasure::ConvertibleDetail
 				{
 					throw std::bad_any_cast{ };
 				}
-				std::array<std::byte, sizeof(T)> buffer{ };
-				vtable->ConvertTo(static_cast<void*>(buffer.data()), typeid(T));
-				return *std::bit_cast<T*>(buffer.data());
-			}
 
+				alignas(T) std::array<std::byte, sizeof(T)> buffer{ };
+				vtable->ConvertTo(static_cast<void*>(buffer.data()), typeid(T));
+
+				auto* ptr = std::launder(reinterpret_cast<T*>(buffer.data()));
+
+				struct Guard
+				{
+					T* ptr;
+					~Guard() noexcept(std::is_nothrow_destructible_v<T>)
+					{
+						std::destroy_at(ptr);
+					}
+				} guard{ ptr };
+
+				return std::move(*ptr);
+			}
 
 			template <typename T> requires InParameterPack<T, Types...> && !IsSpecialization<T, Any>
 			explicit(IsExplicit) operator T() const
