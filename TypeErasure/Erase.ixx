@@ -394,6 +394,12 @@ export namespace TypeErasure
 
 			using Model = CompleteModel<TNaked, Features...>;
 			const auto* model = dynamic_cast<const Model*>(GetModelPtr());
+			
+			if (!model) [[unlikely]]
+			{
+				throw std::bad_any_cast{ };
+			}
+
 			return model->GetObject();
 		}
 
@@ -412,6 +418,12 @@ export namespace TypeErasure
 			using TNaked = std::remove_cvref_t<std::decay_t<T>>;
 			using Model = CompleteModel<std::add_lvalue_reference_t<TNaked>, Features...>;
 			const auto* model = dynamic_cast<Model*>(GetModelPtr());
+
+			if (!model) [[unlikely]]
+			{
+				throw std::bad_any_cast{ };
+			}
+
 			return model->GetObject();
 		}
 

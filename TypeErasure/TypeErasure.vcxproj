@@ -158,7 +158,6 @@
     <ClCompile Include="Features\Features.ixx" />
     <ClCompile Include="Features\Formattable.ixx" />
     <ClCompile Include="Features\Streamable.ixx" />
-    <ClCompile Include="Storage.ixx" />
     <ClCompile Include="TypeErasure.ixx" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

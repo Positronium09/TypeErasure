@@ -18,9 +18,6 @@
     <ClCompile Include="TypeErasure.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Storage.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Erase.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
