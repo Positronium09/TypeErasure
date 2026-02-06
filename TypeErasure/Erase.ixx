@@ -6,38 +6,25 @@ namespace TypeErasure::Detail
 {
 	struct DummyTemplateCheck { };
 
-	template <typename T, template <typename...> typename Template>
+	template <typename, template <typename...> typename>
 	struct IsSpecializationHelper : std::false_type { };
 
 	template <template <typename...> typename Template, typename... Args>
 	struct IsSpecializationHelper<Template<Args...>, Template> : std::true_type { };
 
-	template <typename, typename = void>
-	struct HasTemplatedVTable : std::false_type { };
 	template <typename T>
-	struct HasTemplatedVTable<T, std::void_t<typename T::template VTable<DummyTemplateCheck>>> : std::true_type { };
-	template <typename, typename = void>
-	struct HasTemplatedModel : std::false_type { };
-	template <typename T>
-	struct HasTemplatedModel<T, std::void_t<typename T::template Model<DummyTemplateCheck>>> : std::true_type { };
-	template <typename, typename = void>
-	struct HasTemplatedInterface : std::false_type { };
-	template <typename T>
-	struct HasTemplatedInterface<T, std::void_t<typename T::template Interface<DummyTemplateCheck>>> : std::true_type { };
-	template <typename, typename = void>
-	struct HasValidator : std::false_type { };
-	template <typename T>
-	struct HasValidator<T,
-	std::void_t<decltype(T::template Validator<DummyTemplateCheck>::value)>> : std::true_type { };
-
-	template <typename, typename U>
-	struct ValidateHelper : std::true_type
+	concept HasTemplatedVTable = requires
 	{
+		typename T::template VTable<DummyTemplateCheck>;
 	};
-	template <typename T, typename U> requires HasValidator<U>::value
-	struct ValidateHelper<T, U>
-	{
-		static constexpr bool value = U::template Validator<T>::value;
+	template <typename T>
+	concept HasTemplatedModel = requires {
+		typename T::template Model<DummyTemplateCheck>;
+	};
+
+	template <typename T>
+	concept HasTemplatedInterface = requires {
+		typename T::template Interface<DummyTemplateCheck>;
 	};
 }
 
@@ -47,19 +34,25 @@ export namespace TypeErasure
 	concept IsSpecialization = Detail::IsSpecializationHelper<T, Template>::value;
 
 	template <typename T>
-	concept Validated = Detail::HasValidator<T>::value;
+	concept Validated = requires
+	{
+		{ T::template Validator<Detail::DummyTemplateCheck>::value } -> std::convertible_to<bool>;
+	};
 
 	template <typename T, typename... Types>
 	concept InParameterPack = (std::is_same_v<T, Types> || ...);
 
 	template <typename T>
 	concept FeatureType =
-		Detail::HasTemplatedVTable<T>::value &&
-		Detail::HasTemplatedModel<T>::value &&
-		Detail::HasTemplatedInterface<T>::value;
+		Detail::HasTemplatedVTable<T> &&
+		Detail::HasTemplatedModel<T> &&
+		Detail::HasTemplatedInterface<T>;
+
+	template <typename T, typename Feature>
+	concept CompatibleWith = FeatureType<Feature> && (!Validated<Feature> || Feature::template Validator<T>::value);
 
 	template <typename T, typename... Features>
-	concept ValidateType = (Detail::ValidateHelper<T, Features>::value && ...) && (FeatureType<Features> && ...);
+	concept ValidateType = (CompatibleWith<T, Features> && ...);
 	template <typename T, typename... Features>
 	concept SupportsFeatures = ValidateType<T, Features...>;
 	template <typename T, typename Feature>
